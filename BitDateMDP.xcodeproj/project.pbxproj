@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		060DCF711B15285E00278686 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 060DCF701B15285E00278686 /* AppDelegate.swift */; };
 		060DCF741B15285E00278686 /* BitDateMDP.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 060DCF721B15285E00278686 /* BitDateMDP.xcdatamodeld */; };
-		060DCF761B15285E00278686 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 060DCF751B15285E00278686 /* ViewController.swift */; };
+		060DCF761B15285E00278686 /* BitDateMDP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 060DCF751B15285E00278686 /* BitDateMDP.swift */; };
 		060DCF791B15285E00278686 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 060DCF771B15285E00278686 /* Main.storyboard */; };
 		060DCF7B1B15285F00278686 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 060DCF7A1B15285F00278686 /* Images.xcassets */; };
 		060DCF7E1B15285F00278686 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 060DCF7C1B15285F00278686 /* LaunchScreen.xib */; };
@@ -31,7 +31,7 @@
 		060DCF6F1B15285E00278686 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		060DCF701B15285E00278686 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		060DCF731B15285E00278686 /* BitDateMDP.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = BitDateMDP.xcdatamodel; sourceTree = "<group>"; };
-		060DCF751B15285E00278686 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		060DCF751B15285E00278686 /* BitDateMDP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BitDateMDP.swift; sourceTree = "<group>"; };
 		060DCF781B15285E00278686 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		060DCF7A1B15285F00278686 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		060DCF7D1B15285F00278686 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/LaunchScreen.xib; sourceTree = "<group>"; };
@@ -80,7 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				060DCF701B15285E00278686 /* AppDelegate.swift */,
-				060DCF751B15285E00278686 /* ViewController.swift */,
+				060DCF751B15285E00278686 /* BitDateMDP.swift */,
 				060DCF771B15285E00278686 /* Main.storyboard */,
 				060DCF7A1B15285F00278686 /* Images.xcassets */,
 				060DCF7C1B15285F00278686 /* LaunchScreen.xib */,
@@ -215,7 +215,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				060DCF761B15285E00278686 /* ViewController.swift in Sources */,
+				060DCF761B15285E00278686 /* BitDateMDP.swift in Sources */,
 				060DCF711B15285E00278686 /* AppDelegate.swift in Sources */,
 				060DCF741B15285E00278686 /* BitDateMDP.xcdatamodeld in Sources */,
 			);
