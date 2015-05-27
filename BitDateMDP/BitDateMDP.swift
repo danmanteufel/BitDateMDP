@@ -21,31 +21,105 @@ class HomeVC: UIViewController {
 
 }
 
+//MARK: - Login VC
+class LoginVC: UIViewController {
+    //MARK: Defines
+    
+    //MARK: Properties
+    
+    //MARK: Flow Functions
+    @IBAction func pressedFBLogin(sender: UIButton) {
+        PFFacebookUtils.logInWithPermissions(["public_profile","user_about_me","user_birthday"]) {
+            user, error in
+            if user == nil {
+                println("User cancelled Facebook login")
+                //Alert user that it won't work without Facebook login
+                return
+            } else if user!.isNew {
+                println("User logged in for the first time")
+                FBRequestConnection.startWithGraphPath("/me?fields=picture,first_name,birthday,gender") {
+                    connection, result, error in
+                    if let resultDict = result as? NSDictionary {
+                        user!["firstName"] = resultDict["first_name"]
+                        user!["gender"] = resultDict["gender"]
+                        user!["picture"] = ((resultDict["picture"] as! NSDictionary)["data"] as! NSDictionary)["url"]
+                        var dateFormatter = NSDateFormatter()
+                        dateFormatter.dateFormat = "MM/dd/yyyy"
+                        user!["birthday"] = dateFormatter.dateFromString(resultDict["birthday"] as! String)
+                        user!.saveInBackgroundWithBlock() {
+                            success, error in
+                            println(success)
+                            println(error)
+                        }
+                    }
+                }
+            } else {
+                println("User logged in through Facebook")
+            }
+            let mainSB = UIStoryboard(name: "Main", bundle: nil) //Main is the default Storyboard name
+            if let navVC = mainSB.instantiateViewControllerWithIdentifier("CardsNavController") as? UIViewController {
+                self.presentViewController(navVC, animated: true) {/*Completion handler */}
+            }
+        }
+    }
+    
+    //MARK: Helper Functions
+    
+}
+
 //MARK: - Card View Controller
-class CardsVC: UIViewController {
+class CardsVC: UIViewController, SwipeViewDelegate {
     //MARK: Defines
     let kFrontCardTopMargin = CGFloat(0)
     let kBackCardTopMargin = CGFloat(10)
+
+    struct Card {
+        let cardView: CardView
+        let swipeView: SwipeView
+    }
     
     //MARK: Properties
     @IBOutlet weak var cardStackView: UIView!
-    var frontCard: SwipeView?
-    var backCard: SwipeView?
+    var frontCard: Card?
+    var backCard: Card?
     
     //MARK: Flow Functions
     override func viewDidLoad() {
         super.viewDidLoad()
         cardStackView.backgroundColor = .clearColor()
         
-        backCard = SwipeView(frame: createCardFrame(kBackCardTopMargin))
-        cardStackView.addSubview(backCard!)
-        frontCard = SwipeView(frame: createCardFrame(kFrontCardTopMargin))
-        cardStackView.addSubview(frontCard!)
+        backCard = createCard(kBackCardTopMargin)
+        cardStackView.addSubview(backCard!.swipeView)
+        frontCard = createCard(kFrontCardTopMargin)
+        cardStackView.addSubview(frontCard!.swipeView)
     }
     
     //MARK: Helper Functions
     private func createCardFrame(topMargin: CGFloat) -> CGRect {
         return CGRect(origin: CGPoint(x: 0, y: topMargin), size: cardStackView.frame.size)
+    }
+    
+    private func createCard(topMargin: CGFloat) -> Card {
+        let cardView = CardView()
+        let swipeView = SwipeView(frame: createCardFrame(topMargin))
+        swipeView.delegate = self
+        swipeView.innerView = cardView
+        return Card(cardView: cardView, swipeView: swipeView)
+    }
+    
+    //MARK: SwipeView Delegate
+    func swipedLeft() {
+        println("Swiped Left")
+        if let frontCard = frontCard {
+            frontCard.swipeView.removeFromSuperview()
+        }
+    }
+    
+    func swipedRight() {
+        println("Swiped Right")
+        if let frontCard = frontCard {
+            frontCard.swipeView.removeFromSuperview()
+        }
     }
 }
 
@@ -121,12 +195,20 @@ class SwipeView: UIView {
     //Defines
     let kSVConstraintStandardMultiplier = CGFloat(1)
     let kSVConstraintStandardConstant = CGFloat(0)
-    let kResetAnimationDuration = 0.2
-    
-    private let card = CardView()
+    let kAnimationDuration = 0.2
+    let kDecisionThreshold = CGFloat(4)
     
     //Properties
     private var originalPoint: CGPoint?
+    weak var delegate: SwipeViewDelegate? //prevents memory retain cycle - makes sense with delegation
+    var innerView: UIView? {
+        didSet {
+            if let innerView = innerView {
+                innerView.frame = CGRect(x: 0, y: 0, width: frame.width, height: frame.height)
+                addSubview(innerView)
+            }
+        }
+    }
     
     //Flow Functions
     required init(coder aDecoder: NSCoder) {
@@ -141,22 +223,10 @@ class SwipeView: UIView {
     
     //Helper Functions
     private func initialSetup() {
-        card.setTranslatesAutoresizingMaskIntoConstraints(false)
-        addSubview(card)
-        
         backgroundColor = .clearColor()
         
         addGestureRecognizer(UIPanGestureRecognizer(target: self, action: "dragged:"))
         
-        setConstraints()
-    }
-    
-    private func setConstraints() {
-        addConstraint(NSLayoutConstraint(item: card, attribute: .Top, relatedBy: .Equal, toItem: self, attribute: .Top, multiplier: kSVConstraintStandardMultiplier, constant: kSVConstraintStandardConstant))
-        addConstraint(NSLayoutConstraint(item: card, attribute: .Bottom, relatedBy: .Equal, toItem: self, attribute: .Bottom, multiplier: kSVConstraintStandardMultiplier, constant: kSVConstraintStandardConstant))
-        addConstraint(NSLayoutConstraint(item: card, attribute: .Leading, relatedBy: .Equal, toItem: self, attribute: .Leading, multiplier: kSVConstraintStandardMultiplier, constant: kSVConstraintStandardConstant))
-        addConstraint(NSLayoutConstraint(item: card, attribute: .Trailing, relatedBy: .Equal, toItem: self, attribute: .Trailing, multiplier: kSVConstraintStandardMultiplier, constant: kSVConstraintStandardConstant))
-
     }
     
     func dragged(gesture: UIPanGestureRecognizer) {
@@ -164,17 +234,53 @@ class SwipeView: UIView {
         
         switch gesture.state {
         case .Began: originalPoint = center
-        case .Changed: center = CGPointMake(originalPoint!.x + distance.x, originalPoint!.y + distance.y)
-        case .Ended: resetViewPositionAndTransformations()
+        case .Changed:
+            let rotationPct = min(distance.x/(superview!.frame.width/2), 1)
+            let rotationAngle = CGFloat(2*M_PI/16)*rotationPct
+            transform = CGAffineTransformMakeRotation(rotationAngle)
+            
+            center = CGPointMake(originalPoint!.x + distance.x, originalPoint!.y + distance.y)
+            
+        case .Ended:
+            if abs(distance.x) < frame.width/kDecisionThreshold { resetViewPositionAndTransformations() }
+            else { swipe(distance.x > 0 ? .Right : .Left) }
         default: break
         }
         
     }
     
     private func resetViewPositionAndTransformations() {
-        UIView.animateWithDuration(kResetAnimationDuration) { self.center = self.originalPoint! }
+        UIView.animateWithDuration(kAnimationDuration) {
+            self.center = self.originalPoint!
+            self.transform = CGAffineTransformIdentity
+        }
     }
     
+    func swipe(s: Direction) {
+        if s == .None { return }
+        var parentWidth = superview!.frame.size.width
+        if s == .Left { parentWidth *= -1 }
+        
+        UIView.animateWithDuration(kAnimationDuration, animations: { self.center.x = self.frame.origin.x + parentWidth }) {
+            success in
+            if let delegate = self.delegate {
+                s == .Right ? delegate.swipedRight() : delegate.swipedLeft()
+            }
+        }
+    }
+    
+}
+
+protocol SwipeViewDelegate: class {
+    func swipedLeft()
+    func swipedRight()
+}
+
+//MARK: - Enums
+enum Direction {
+    case None
+    case Left
+    case Right
 }
 //
 //
