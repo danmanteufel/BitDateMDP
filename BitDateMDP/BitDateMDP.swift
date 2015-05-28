@@ -67,6 +67,20 @@ class LoginVC: UIViewController {
     
 }
 
+//MARK: - Profile VC
+class ProfileVC: UIViewController {
+    //MARK: Defines
+    
+    //MARK: Properties
+    @IBOutlet weak var imageView: UIImageView!
+    @IBOutlet weak var nameLabel: UILabel!
+    
+    //MARK: Flow Functions
+    
+    //MARK: Helper Functions
+    
+}
+
 //MARK: - Card View Controller
 class CardsVC: UIViewController, SwipeViewDelegate {
     //MARK: Defines
@@ -282,6 +296,46 @@ enum Direction {
     case Left
     case Right
 }
+//MARK: - Model
+struct User {
+    //Public Interface
+    let id: String
+    let pictureURL: String
+    let name: String
+    
+    //Private Interface - Backend
+    private let pfUser: PFUser
+}
+
+//Public Model Functions
+func currentUser() -> User? {
+    if let user = PFUser.currentUser() {
+        return pfUserToUser(user)
+    }
+    return nil
+}
+
+func setupUserBackend() {
+    Parse.setApplicationId("TXYTkJvwFTxGTCRAcXRq5MsXmuPjehT1sc42gz3J", clientKey: "lXTnV3acc8gNoimtDGzy3EdGzAnyKhHQHbYJzu1o")
+    PFFacebookUtils.initializeFacebook()
+}
+
+//Private Model Functions
+private func pfUserToUser(user: PFUser) -> User {
+    return User(id: user.objectId!, pictureURL: user.objectForKey("picture") as! String, name: user.objectForKey("firstName") as! String, pfUser: user)
+}
+
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 //
 //
 //

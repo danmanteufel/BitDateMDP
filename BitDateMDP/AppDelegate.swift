@@ -18,8 +18,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         // Override point for customization after application launch.
         
-        Parse.setApplicationId("TXYTkJvwFTxGTCRAcXRq5MsXmuPjehT1sc42gz3J", clientKey: "lXTnV3acc8gNoimtDGzy3EdGzAnyKhHQHbYJzu1o")
-        PFFacebookUtils.initializeFacebook()
+        setupUserBackend()
         
 //        let testObject = PFObject(className: "TestObject")
 //        testObject["foo"] = "bar"
@@ -27,7 +26,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         let mainSB = UIStoryboard(name: "Main", bundle: nil)
         var initialVC: UIViewController
-        if PFUser.currentUser() != nil {
+        if currentUser() != nil {
             initialVC = mainSB.instantiateViewControllerWithIdentifier("CardsNavController") as! UIViewController
         } else {
             initialVC = mainSB.instantiateViewControllerWithIdentifier("LoginVC") as! UIViewController
