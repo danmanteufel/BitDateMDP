@@ -24,10 +24,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //        testObject["foo"] = "bar"
 //        testObject.save()
         
-        let mainSB = UIStoryboard(name: "Main", bundle: nil)
         var initialVC: UIViewController
         if currentUser() != nil {
-            initialVC = mainSB.instantiateViewControllerWithIdentifier("CardsNavController") as! UIViewController
+            initialVC = PageVC(transitionStyle: .Scroll, navigationOrientation: .Horizontal, options: nil)
         } else {
             initialVC = mainSB.instantiateViewControllerWithIdentifier("LoginVC") as! UIViewController
         }

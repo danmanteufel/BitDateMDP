@@ -9,16 +9,42 @@
 import UIKit
 
 //MARK: - View Controllers
-//MARK: - Home VC
-class HomeVC: UIViewController {
+let mainSB = UIStoryboard(name: "Main", bundle: nil) //Main is the default Storyboard name
+
+//MARK: - Page VC
+class PageVC: UIPageViewController, UIPageViewControllerDataSource {
     //MARK: Defines
+    let cardsVC = mainSB.instantiateViewControllerWithIdentifier("CardsNavController") as! UIViewController
+    let profileVC = mainSB.instantiateViewControllerWithIdentifier("ProfileNavController") as! UIViewController
 
     //MARK: Properties
     
     //MARK: Flow Functions
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .whiteColor()
+        dataSource = self
+        setViewControllers([cardsVC], direction: .Forward, animated: true, completion: nil)
+    }
     
     //MARK: Helper Functions
 
+    //MARK: PageVC Data Source
+    func pageViewController(pageViewController: UIPageViewController, viewControllerBeforeViewController viewController: UIViewController) -> UIViewController? {
+        switch viewController {
+            case cardsVC: return profileVC
+//            case profileVC: return nil
+            default: return nil
+        }
+    }
+    
+    func pageViewController(pageViewController: UIPageViewController, viewControllerAfterViewController viewController: UIViewController) -> UIViewController? {
+        switch viewController {
+//            case cardsVC: return nil
+            case profileVC: return cardsVC
+            default: return nil
+        }
+    }
 }
 
 //MARK: - Login VC
@@ -42,21 +68,23 @@ class LoginVC: UIViewController {
                     if let resultDict = result as? NSDictionary {
                         user!["firstName"] = resultDict["first_name"]
                         user!["gender"] = resultDict["gender"]
-                        user!["picture"] = ((resultDict["picture"] as! NSDictionary)["data"] as! NSDictionary)["url"]
                         var dateFormatter = NSDateFormatter()
                         dateFormatter.dateFormat = "MM/dd/yyyy"
                         user!["birthday"] = dateFormatter.dateFromString(resultDict["birthday"] as! String)
-                        user!.saveInBackgroundWithBlock() {
-                            success, error in
-                            println(success)
-                            println(error)
+                        
+                        let pictureURL = NSURL(string: ((resultDict["picture"] as! NSDictionary)["data"] as! NSDictionary)["url"] as! String)
+                        let request = NSURLRequest(URL: pictureURL!)
+                        NSURLConnection.sendAsynchronousRequest(request, queue: .mainQueue()) { //Is mainQueue() really best practice?
+                            response, data, error in
+                            let imageFile = PFFile(name: "avatar.jpg", data: data)
+                            user!["picture"] = imageFile
+                            user!.saveInBackgroundWithBlock(nil)
                         }
                     }
                 }
             } else {
                 println("User logged in through Facebook")
             }
-            let mainSB = UIStoryboard(name: "Main", bundle: nil) //Main is the default Storyboard name
             if let navVC = mainSB.instantiateViewControllerWithIdentifier("CardsNavController") as? UIViewController {
                 self.presentViewController(navVC, animated: true) {/*Completion handler */}
             }
@@ -76,6 +104,16 @@ class ProfileVC: UIViewController {
     @IBOutlet weak var nameLabel: UILabel!
     
     //MARK: Flow Functions
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        nameLabel.text = currentUser()?.name
+        currentUser()?.getPhoto() {
+            image in
+            self.imageView.layer.masksToBounds = true
+            self.imageView.contentMode = .ScaleAspectFill
+            self.imageView.image = image
+        }
+    }
     
     //MARK: Helper Functions
     
@@ -300,8 +338,17 @@ enum Direction {
 struct User {
     //Public Interface
     let id: String
-    let pictureURL: String
     let name: String
+    
+    func getPhoto(callback: (UIImage) -> () ) {
+        let imageFile = pfUser.objectForKey("picture") as! PFFile
+        imageFile.getDataInBackgroundWithBlock() {
+            data, error in
+            if let data = data {
+                callback(UIImage(data: data)!)
+            }
+        }
+    }
     
     //Private Interface - Backend
     private let pfUser: PFUser
@@ -322,7 +369,7 @@ func setupUserBackend() {
 
 //Private Model Functions
 private func pfUserToUser(user: PFUser) -> User {
-    return User(id: user.objectId!, pictureURL: user.objectForKey("picture") as! String, name: user.objectForKey("firstName") as! String, pfUser: user)
+    return User(id: user.objectId!, name: user.objectForKey("firstName") as! String, pfUser: user)
 }
 
 //
