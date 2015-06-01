@@ -10,6 +10,7 @@ import UIKit
 
 //MARK: - View Controllers
 let mainSB = UIStoryboard(name: "Main", bundle: nil) //Main is the default Storyboard name
+let kAnimationDuration = 0.2
 //Kinda lazy. Not sure if this is enough encapsulation for proper OOP.
 let pageController = PageVC(transitionStyle: .Scroll, navigationOrientation: .Horizontal, options: nil)
 
@@ -145,17 +146,22 @@ class ProfileVC: UIViewController {
 class CardsVC: UIViewController, SwipeViewDelegate {
     //MARK: Defines
     let kFrontCardTopMargin = CGFloat(0)
-    let kBackCardTopMargin = CGFloat(10)
+    let kBackCardTopMargin = CGFloat(10)//Actually delta between front and back
 
     struct Card {
         let cardView: CardView
         let swipeView: SwipeView
+        let user: User
     }
     
     //MARK: Properties
     @IBOutlet weak var cardStackView: UIView!
+    @IBOutlet weak var nahButton: UIButton!
+    @IBOutlet weak var yeahButton: UIButton!
+    
     var frontCard: Card?
     var backCard: Card?
+    var users: [User]?
     
     //MARK: Flow Functions
     override func viewWillAppear(animated: Bool) {
@@ -168,11 +174,32 @@ class CardsVC: UIViewController, SwipeViewDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         cardStackView.backgroundColor = .clearColor()
-        
-        backCard = createCard(kBackCardTopMargin)
-        cardStackView.addSubview(backCard!.swipeView)
-        frontCard = createCard(kFrontCardTopMargin)
-        cardStackView.addSubview(frontCard!.swipeView)
+        nahButton.setImage(UIImage(named: "nah-button-pressed"), forState: .Highlighted)
+        yeahButton.setImage(UIImage(named: "yeah-button-pressed"), forState: .Highlighted)
+        fetchUnviewedUsers() {
+            self.users = $0
+            if let card = self.popCard() {
+                self.frontCard = card
+                self.cardStackView.addSubview(self.frontCard!.swipeView)
+            }
+            if let card = self.popCard() {
+                self.backCard = card
+                self.backCard!.swipeView.frame = self.createCardFrame(self.kBackCardTopMargin)
+                self.cardStackView.insertSubview(self.backCard!.swipeView, belowSubview: self.frontCard!.swipeView)
+            }
+        }
+    }
+    
+    @IBAction func nahButtonPressed(sender: UIButton) {
+        if let card = frontCard {
+            card.swipeView.swipe(.Left)
+        }
+    }
+    
+    @IBAction func yeahButtonPressed(sender: UIButton) {
+        if let card = frontCard {
+            card.swipeView.swipe(.Right)
+        }
     }
     
     func goToProfile(button: UIBarButtonItem) {
@@ -184,26 +211,53 @@ class CardsVC: UIViewController, SwipeViewDelegate {
         return CGRect(origin: CGPoint(x: 0, y: topMargin), size: cardStackView.frame.size)
     }
     
-    private func createCard(topMargin: CGFloat) -> Card {
+    private func createCard(user: User) -> Card {
         let cardView = CardView()
-        let swipeView = SwipeView(frame: createCardFrame(topMargin))
+        cardView.name = user.name
+        user.getPhoto() { cardView.image = $0 }
+        let swipeView = SwipeView(frame: createCardFrame(kFrontCardTopMargin))
         swipeView.delegate = self
         swipeView.innerView = cardView
-        return Card(cardView: cardView, swipeView: swipeView)
+        return Card(cardView: cardView, swipeView: swipeView, user: user)
+    }
+    
+    private func popCard() -> Card? {
+        if users != nil && users?.count > 0 {
+            return createCard(users!.removeLast())
+        }
+        return nil
+    }
+    
+    private func switchCards() {
+        if let card = backCard {
+            frontCard = card
+            UIView.animateWithDuration(kAnimationDuration) {
+                self.frontCard!.swipeView.frame = self.createCardFrame(self.kFrontCardTopMargin)
+            }
+        }
+        if let card = self.popCard() {
+            backCard = card
+            backCard!.swipeView.frame = createCardFrame(kBackCardTopMargin)
+            cardStackView.insertSubview(backCard!.swipeView, belowSubview: frontCard!.swipeView)
+        }
     }
     
     //MARK: SwipeView Delegate
     func swipedLeft() {
-        println("Swiped Left")
+//        println("Swiped Left")
         if let frontCard = frontCard {
             frontCard.swipeView.removeFromSuperview()
+            saveSkip(frontCard.user)
+            switchCards()
         }
     }
     
     func swipedRight() {
-        println("Swiped Right")
+//        println("Swiped Right")
         if let frontCard = frontCard {
             frontCard.swipeView.removeFromSuperview()
+            saveLike(frontCard.user)
+            switchCards()
         }
     }
 }
@@ -223,6 +277,8 @@ class CardView: UIView {
     private let nameLabel = UILabel()
     
     //MARK: Properties
+    var name: String? { didSet { if let name = name { nameLabel.text = name }}}
+    var image: UIImage? { didSet { if let image = image { imageView.image = image }}}
     
     //MARK: Flow Functions
     required init(coder aDecoder: NSCoder) {
@@ -280,8 +336,9 @@ class SwipeView: UIView {
     //Defines
     let kSVConstraintStandardMultiplier = CGFloat(1)
     let kSVConstraintStandardConstant = CGFloat(0)
-    let kAnimationDuration = 0.2
     let kDecisionThreshold = CGFloat(4)
+    
+    let overlay = UIImageView()
     
     //Properties
     private var originalPoint: CGPoint?
@@ -290,10 +347,11 @@ class SwipeView: UIView {
         didSet {
             if let innerView = innerView {
                 innerView.frame = CGRect(x: 0, y: 0, width: frame.width, height: frame.height)
-                addSubview(innerView)
+                insertSubview(innerView, belowSubview: overlay)
             }
         }
     }
+    var direction: Direction?
     
     //Flow Functions
     required init(coder aDecoder: NSCoder) {
@@ -312,6 +370,9 @@ class SwipeView: UIView {
         
         addGestureRecognizer(UIPanGestureRecognizer(target: self, action: "dragged:"))
         
+        overlay.frame = CGRect(x: 0, y: 0, width: frame.width, height: frame.height) //overlay is same size as SwipeView
+        addSubview(overlay)
+        
     }
     
     func dragged(gesture: UIPanGestureRecognizer) {
@@ -325,6 +386,7 @@ class SwipeView: UIView {
             transform = CGAffineTransformMakeRotation(rotationAngle)
             
             center = CGPointMake(originalPoint!.x + distance.x, originalPoint!.y + distance.y)
+            updateOverlay(distance.x)
             
         case .Ended:
             if abs(distance.x) < frame.width/kDecisionThreshold { resetViewPositionAndTransformations() }
@@ -338,6 +400,7 @@ class SwipeView: UIView {
         UIView.animateWithDuration(kAnimationDuration) {
             self.center = self.originalPoint!
             self.transform = CGAffineTransformIdentity
+            self.overlay.alpha = 0
         }
     }
     
@@ -352,6 +415,16 @@ class SwipeView: UIView {
                 s == .Right ? delegate.swipedRight() : delegate.swipedLeft()
             }
         }
+    }
+    
+    private func updateOverlay(distance: CGFloat) {
+        var newDirection: Direction
+        newDirection = distance < 0 ? .Left : .Right
+        if newDirection != direction {
+            direction = newDirection
+            overlay.image = direction == .Right ? UIImage(named: "yeah-stamp") : UIImage(named: "nah-stamp")
+        }
+        overlay.alpha = abs(distance) / (superview!.frame.width / 2)
     }
     
 }
@@ -401,12 +474,59 @@ func setupUserBackend() {
 }
 
 func fetchUnviewedUsers(callback: ([User]) -> ()) {
-    PFUser.query()!.whereKey("objectID", notEqualTo: PFUser.currentUser()!.objectId!).findObjectsInBackgroundWithBlock() {
+    PFQuery(className: "Action")
+        .whereKey("byUser", equalTo: PFUser.currentUser()!.objectId!)
+        .findObjectsInBackgroundWithBlock() {
         objects, error in
-        if let pfUsers = objects as? [PFUser] {
-            let users = map(pfUsers) { pfUserToUser($0) }
-            callback(users)
+        if let pfUsers = objects as? [PFObject] {
+            let seenIDs = map(pfUsers) { $0.objectForKey("toUser")!}
+            PFUser.query()!
+                .whereKey("objectId", notEqualTo: (PFUser.currentUser()?.objectId)!)
+                .whereKey("objectId", notContainedIn: seenIDs)
+                .findObjectsInBackgroundWithBlock() {
+                objects, error in
+                if let pfUsers = objects as? [PFUser] {
+                    let users = map(pfUsers) { pfUserToUser($0) }
+                    callback(users)
+                }
+            }
         }
+    }
+}
+
+func saveSkip(user: User) {
+    let skip = PFObject(className: "Action")
+    skip.setObject(PFUser.currentUser()!.objectId!, forKey: "byUser")
+    skip.setObject(user.id, forKey: "toUser")
+    skip.setObject("skipped", forKey: "type")
+    skip.saveInBackgroundWithBlock(nil)
+}
+
+func saveLike(user: User) {
+//    let like = PFObject(className: "Action")
+//    like.setObject(PFUser.currentUser()!.objectId!, forKey: "byUser")
+//    like.setObject(user.id, forKey: "toUser")
+//    like.setObject("liked", forKey: "type")
+//    like.saveInBackgroundWithBlock(nil)
+    
+    //TEST FOR MATCHES WOULD NORMALLY BE ON BACK END
+    PFQuery(className: "Action")
+        .whereKey("byUser", equalTo: user.id)
+        .whereKey("toUser", equalTo: PFUser.currentUser()!.objectId!)
+        .whereKey("type", equalTo: "liked")
+        .getFirstObjectInBackgroundWithBlock() { //Know there's only one (optimized)
+            object, error in
+            var matched = false
+            if object != nil {
+                matched = true
+                object?.setObject("matched", forKey: "type")
+                object?.saveInBackgroundWithBlock(nil)
+            }
+            let match = PFObject(className: "Action")
+            match.setObject(PFUser.currentUser()!.objectId!, forKey: "byUser")
+            match.setObject(user.id, forKey: "toUser")
+            match.setObject(matched ? "matched" : "liked", forKey: "type")
+            match.saveInBackgroundWithBlock(nil)
     }
 }
 
