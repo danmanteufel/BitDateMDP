@@ -10,6 +10,8 @@ import UIKit
 
 //MARK: - View Controllers
 let mainSB = UIStoryboard(name: "Main", bundle: nil) //Main is the default Storyboard name
+//Kinda lazy. Not sure if this is enough encapsulation for proper OOP.
+let pageController = PageVC(transitionStyle: .Scroll, navigationOrientation: .Horizontal, options: nil)
 
 //MARK: - Page VC
 class PageVC: UIPageViewController, UIPageViewControllerDataSource {
@@ -28,6 +30,15 @@ class PageVC: UIPageViewController, UIPageViewControllerDataSource {
     }
     
     //MARK: Helper Functions
+    func goToNextVC() {
+        let nextVC = pageViewController(self, viewControllerAfterViewController: viewControllers[0] as! UIViewController)!
+        setViewControllers([nextVC], direction: .Forward, animated: true, completion: nil)
+    }
+    
+    func goToPreviousVC() {
+        let previousVC = pageViewController(self, viewControllerBeforeViewController: viewControllers[0] as! UIViewController)!
+        setViewControllers([previousVC], direction: .Reverse, animated: true, completion: nil)
+    }
 
     //MARK: PageVC Data Source
     func pageViewController(pageViewController: UIPageViewController, viewControllerBeforeViewController viewController: UIViewController) -> UIViewController? {
@@ -104,6 +115,13 @@ class ProfileVC: UIViewController {
     @IBOutlet weak var nameLabel: UILabel!
     
     //MARK: Flow Functions
+    override func viewWillAppear(animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationItem.titleView = UIImageView(image: UIImage(named: "profile-header"))
+        let rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "nav-back-button"), style: .Plain, target: self, action: "goToCards:")
+        navigationItem.setRightBarButtonItem(rightBarButtonItem, animated: true)
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         nameLabel.text = currentUser()?.name
@@ -115,11 +133,15 @@ class ProfileVC: UIViewController {
         }
     }
     
+    func goToCards(button: UIBarButtonItem) {
+        pageController.goToNextVC()
+    }
+    
     //MARK: Helper Functions
     
 }
 
-//MARK: - Card View Controller
+//MARK: - Cards View Controller
 class CardsVC: UIViewController, SwipeViewDelegate {
     //MARK: Defines
     let kFrontCardTopMargin = CGFloat(0)
@@ -136,6 +158,13 @@ class CardsVC: UIViewController, SwipeViewDelegate {
     var backCard: Card?
     
     //MARK: Flow Functions
+    override func viewWillAppear(animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationItem.titleView = UIImageView(image: UIImage(named: "nav-header"))
+        let leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "nav-back-button"), style: .Plain, target: self, action: "goToProfile:")
+        navigationItem.setLeftBarButtonItem(leftBarButtonItem, animated: true)
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         cardStackView.backgroundColor = .clearColor()
@@ -144,6 +173,10 @@ class CardsVC: UIViewController, SwipeViewDelegate {
         cardStackView.addSubview(backCard!.swipeView)
         frontCard = createCard(kFrontCardTopMargin)
         cardStackView.addSubview(frontCard!.swipeView)
+    }
+    
+    func goToProfile(button: UIBarButtonItem) {
+        pageController.goToPreviousVC()
     }
     
     //MARK: Helper Functions
@@ -365,6 +398,16 @@ func currentUser() -> User? {
 func setupUserBackend() {
     Parse.setApplicationId("TXYTkJvwFTxGTCRAcXRq5MsXmuPjehT1sc42gz3J", clientKey: "lXTnV3acc8gNoimtDGzy3EdGzAnyKhHQHbYJzu1o")
     PFFacebookUtils.initializeFacebook()
+}
+
+func fetchUnviewedUsers(callback: ([User]) -> ()) {
+    PFUser.query()!.whereKey("objectID", notEqualTo: PFUser.currentUser()!.objectId!).findObjectsInBackgroundWithBlock() {
+        objects, error in
+        if let pfUsers = objects as? [PFUser] {
+            let users = map(pfUsers) { pfUserToUser($0) }
+            callback(users)
+        }
+    }
 }
 
 //Private Model Functions

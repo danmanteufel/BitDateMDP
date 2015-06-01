@@ -26,7 +26,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         var initialVC: UIViewController
         if currentUser() != nil {
-            initialVC = PageVC(transitionStyle: .Scroll, navigationOrientation: .Horizontal, options: nil)
+            initialVC = pageController
         } else {
             initialVC = mainSB.instantiateViewControllerWithIdentifier("LoginVC") as! UIViewController
         }
