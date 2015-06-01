@@ -28,7 +28,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if currentUser() != nil {
             initialVC = pageController
         } else {
-            initialVC = mainSB.instantiateViewControllerWithIdentifier("LoginVC") as! UIViewController
+            initialVC = SB.Main.instantiateViewControllerWithIdentifier(SB.LoginVC) as! UIViewController
         }
         
         //Do this because we're overriding the storyboard entry point

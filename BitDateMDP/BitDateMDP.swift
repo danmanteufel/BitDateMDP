@@ -9,16 +9,25 @@
 import UIKit
 
 //MARK: - View Controllers
-let mainSB = UIStoryboard(name: "Main", bundle: nil) //Main is the default Storyboard name
 let kAnimationDuration = 0.2
 //Kinda lazy. Not sure if this is enough encapsulation for proper OOP.
 let pageController = PageVC(transitionStyle: .Scroll, navigationOrientation: .Horizontal, options: nil)
 
+struct SB {
+    static let Main = UIStoryboard(name: "Main", bundle: nil) //Main is the default Storyboard name
+    static let LoginVC = "LoginVC"
+    static let CardsNC = "CardsNavController"
+    static let ProfileNC = "ProfileNavController"
+    static let MatchesNC = "MatchesNavController"
+    static let UserCell = "User Cell"
+}
+
 //MARK: - Page VC
 class PageVC: UIPageViewController, UIPageViewControllerDataSource {
     //MARK: Defines
-    let cardsVC = mainSB.instantiateViewControllerWithIdentifier("CardsNavController") as! UIViewController
-    let profileVC = mainSB.instantiateViewControllerWithIdentifier("ProfileNavController") as! UIViewController
+    let cardsVC = SB.Main.instantiateViewControllerWithIdentifier(SB.CardsNC) as! UIViewController
+    let profileVC = SB.Main.instantiateViewControllerWithIdentifier(SB.ProfileNC) as! UIViewController
+    let matchesVC = SB.Main.instantiateViewControllerWithIdentifier(SB.MatchesNC) as! UIViewController
 
     //MARK: Properties
     
@@ -45,14 +54,14 @@ class PageVC: UIPageViewController, UIPageViewControllerDataSource {
     func pageViewController(pageViewController: UIPageViewController, viewControllerBeforeViewController viewController: UIViewController) -> UIViewController? {
         switch viewController {
             case cardsVC: return profileVC
-//            case profileVC: return nil
+            case matchesVC: return cardsVC
             default: return nil
         }
     }
     
     func pageViewController(pageViewController: UIPageViewController, viewControllerAfterViewController viewController: UIViewController) -> UIViewController? {
         switch viewController {
-//            case cardsVC: return nil
+            case cardsVC: return matchesVC
             case profileVC: return cardsVC
             default: return nil
         }
@@ -84,12 +93,12 @@ class LoginVC: UIViewController {
                         dateFormatter.dateFormat = "MM/dd/yyyy"
                         user!["birthday"] = dateFormatter.dateFromString(resultDict["birthday"] as! String)
                         
-                        let pictureURL = NSURL(string: ((resultDict["picture"] as! NSDictionary)["data"] as! NSDictionary)["url"] as! String)
+                        let pictureURL = NSURL(string: ((resultDict[K.PictureKey] as! NSDictionary)["data"] as! NSDictionary)["url"] as! String)
                         let request = NSURLRequest(URL: pictureURL!)
                         NSURLConnection.sendAsynchronousRequest(request, queue: .mainQueue()) { //Is mainQueue() really best practice?
                             response, data, error in
                             let imageFile = PFFile(name: "avatar.jpg", data: data)
-                            user!["picture"] = imageFile
+                            user![K.PictureKey] = imageFile
                             user!.saveInBackgroundWithBlock(nil)
                         }
                     }
@@ -97,7 +106,7 @@ class LoginVC: UIViewController {
             } else {
                 println("User logged in through Facebook")
             }
-            if let navVC = mainSB.instantiateViewControllerWithIdentifier("CardsNavController") as? UIViewController {
+            if let navVC = SB.Main.instantiateViewControllerWithIdentifier(SB.CardsNC) as? UIViewController {
                 self.presentViewController(navVC, animated: true) {/*Completion handler */}
             }
         }
@@ -261,6 +270,57 @@ class CardsVC: UIViewController, SwipeViewDelegate {
         }
     }
 }
+
+//MARK: - Matches Table View Controller
+class MatchesTVC: UITableViewController {
+    //MARK: Defines
+    
+    //MARK: Properties
+    var matches: [Match] = [] { didSet { tableView.reloadData() } }
+    
+    //MARK: Flow Functions
+    override func viewWillAppear(animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationItem.titleView = UIImageView(image: UIImage(named: "chat-header"))
+        let leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "nav-back-button"), style: .Plain, target: self, action: "goToPreviousVC:")
+        navigationItem.setLeftBarButtonItem(leftBarButtonItem, animated: true)
+        fetchMatches() { self.matches = $0 }
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+    }
+    
+    //MARK: Helper Functions
+    func goToPreviousVC(button: UIBarButtonItem) {
+        pageController.goToPreviousVC()
+    }
+    
+    //MARK: UITableView Data Source
+    override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCellWithIdentifier(SB.UserCell) as! UserCell
+        let user = matches[indexPath.row].user
+        println(user.name)
+        cell.nameLabel.text = user.name
+        user.getPhoto() {
+            cell.avatarImageView.image = $0
+        }
+        
+        return cell
+    }
+
+    override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return matches.count
+    }
+    
+    //MARK: UITableView Delegate
+    override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+        tableView.deselectRowAtIndexPath(indexPath, animated: true)
+    }
+
+    
+}
+
 
 //MARK: - Views
 //MARK: - Card View
@@ -434,20 +494,52 @@ protocol SwipeViewDelegate: class {
     func swipedRight()
 }
 
+//MARK: - User Cell
+class UserCell: UITableViewCell {
+    //MARK: Defines
+    
+    //MARK: Properties
+    @IBOutlet weak var avatarImageView: UIImageView!
+    @IBOutlet weak var nameLabel: UILabel!
+    
+    //MARK: Flow Functions
+    
+    //MARK: Helper Functions
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        avatarImageView.layer.cornerRadius = avatarImageView.frame.height / 2
+        avatarImageView.layer.masksToBounds = true
+    }
+    
+}
+
 //MARK: - Enums
 enum Direction {
     case None
     case Left
     case Right
 }
+
 //MARK: - Model
+struct K {
+    static let PictureKey = "picture"
+    static let ParseAppID = "TXYTkJvwFTxGTCRAcXRq5MsXmuPjehT1sc42gz3J"
+    static let ParseClientKey = "lXTnV3acc8gNoimtDGzy3EdGzAnyKhHQHbYJzu1o"
+    static let ParseActionObject = "Action"
+    static let ByUserAttr = "byUser"
+    static let ToUserAttr = "toUser"
+    static let ObjectIDAttr = "objectId"
+    static let TypeAttr = "type"
+    static let MatchedValue = "matched"
+}
+
 struct User {
     //Public Interface
     let id: String
     let name: String
     
     func getPhoto(callback: (UIImage) -> () ) {
-        let imageFile = pfUser.objectForKey("picture") as! PFFile
+        let imageFile = pfUser.objectForKey(K.PictureKey) as! PFFile
         imageFile.getDataInBackgroundWithBlock() {
             data, error in
             if let data = data {
@@ -460,6 +552,14 @@ struct User {
     private let pfUser: PFUser
 }
 
+struct Match {
+    //Public Interface
+    let id: String
+    let user: User
+    
+    //Private Interface - Backend
+}
+
 //Public Model Functions
 func currentUser() -> User? {
     if let user = PFUser.currentUser() {
@@ -469,20 +569,20 @@ func currentUser() -> User? {
 }
 
 func setupUserBackend() {
-    Parse.setApplicationId("TXYTkJvwFTxGTCRAcXRq5MsXmuPjehT1sc42gz3J", clientKey: "lXTnV3acc8gNoimtDGzy3EdGzAnyKhHQHbYJzu1o")
+    Parse.setApplicationId(K.ParseAppID, clientKey: K.ParseClientKey)
     PFFacebookUtils.initializeFacebook()
 }
 
 func fetchUnviewedUsers(callback: ([User]) -> ()) {
-    PFQuery(className: "Action")
-        .whereKey("byUser", equalTo: PFUser.currentUser()!.objectId!)
+    PFQuery(className: K.ParseActionObject)
+        .whereKey(K.ByUserAttr, equalTo: PFUser.currentUser()!.objectId!)
         .findObjectsInBackgroundWithBlock() {
         objects, error in
         if let pfUsers = objects as? [PFObject] {
-            let seenIDs = map(pfUsers) { $0.objectForKey("toUser")!}
+            let seenIDs = map(pfUsers) { $0.objectForKey(K.ToUserAttr)!}
             PFUser.query()!
-                .whereKey("objectId", notEqualTo: (PFUser.currentUser()?.objectId)!)
-                .whereKey("objectId", notContainedIn: seenIDs)
+                .whereKey(K.ObjectIDAttr, notEqualTo: (PFUser.currentUser()?.objectId)!)
+                .whereKey(K.ObjectIDAttr, notContainedIn: seenIDs)
                 .findObjectsInBackgroundWithBlock() {
                 objects, error in
                 if let pfUsers = objects as? [PFUser] {
@@ -527,6 +627,36 @@ func saveLike(user: User) {
             match.setObject(user.id, forKey: "toUser")
             match.setObject(matched ? "matched" : "liked", forKey: "type")
             match.saveInBackgroundWithBlock(nil)
+    }
+}
+
+func fetchMatches(callback: ([Match]) -> ()) {
+    PFQuery(className: K.ParseActionObject)
+        .whereKey(K.ByUserAttr, equalTo: PFUser.currentUser()!.objectId!)
+        .whereKey(K.TypeAttr, equalTo: K.MatchedValue)
+        .findObjectsInBackgroundWithBlock() {
+            objects, error in
+            if let matches = objects as? [PFObject] {
+                let matchedUsers = matches.map(){
+                    (object) -> (matchID: String , userID: String) in
+                    (object.objectId! , object.objectForKey(K.ToUserAttr) as! String)
+                }
+                let userIDs = matchedUsers.map(){ $0.userID }
+                PFUser.query()?
+                    .whereKey(K.ObjectIDAttr, containedIn: userIDs)
+                    .findObjectsInBackgroundWithBlock() {
+                        objects, error in
+                        if var users = objects as? [PFUser] {
+                            //Parse gives you users in reverse order
+                            users.reverse()
+                            var matches = Array<Match>()
+                            for (index , user) in enumerate(users) {
+                                matches.append(Match(id: matchedUsers[index].matchID, user: pfUserToUser(user)))
+                            }
+                            callback(matches)
+                        }
+                }
+            }
     }
 }
 
