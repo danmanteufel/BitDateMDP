@@ -14,6 +14,8 @@
 		060DCF791B15285E00278686 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 060DCF771B15285E00278686 /* Main.storyboard */; };
 		060DCF7E1B15285F00278686 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 060DCF7C1B15285F00278686 /* LaunchScreen.xib */; };
 		060DCF8A1B15285F00278686 /* BitDateMDPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 060DCF891B15285F00278686 /* BitDateMDPTests.swift */; };
+		065832AF1B2280FB009630E2 /* libicucore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 065832AE1B2280FB009630E2 /* libicucore.dylib */; };
+		065832B11B22810E009630E2 /* libc++.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 065832B01B22810E009630E2 /* libc++.dylib */; };
 		06CE23961B163B290079558D /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06CE23941B163B290079558D /* Parse.framework */; };
 		06CE23971B163B290079558D /* ParseFacebookUtils.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06CE23951B163B290079558D /* ParseFacebookUtils.framework */; };
 		06CE23991B163B670079558D /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06CE23981B163B670079558D /* AudioToolbox.framework */; };
@@ -52,6 +54,8 @@
 		060DCF831B15285F00278686 /* BitDateMDPTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BitDateMDPTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		060DCF881B15285F00278686 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		060DCF891B15285F00278686 /* BitDateMDPTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BitDateMDPTests.swift; sourceTree = "<group>"; };
+		065832AE1B2280FB009630E2 /* libicucore.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libicucore.dylib; path = usr/lib/libicucore.dylib; sourceTree = SDKROOT; };
+		065832B01B22810E009630E2 /* libc++.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.dylib"; path = "usr/lib/libc++.dylib"; sourceTree = SDKROOT; };
 		06CE23941B163B290079558D /* Parse.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Parse.framework; sourceTree = "<group>"; };
 		06CE23951B163B290079558D /* ParseFacebookUtils.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = ParseFacebookUtils.framework; sourceTree = "<group>"; };
 		06CE23981B163B670079558D /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
@@ -76,6 +80,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				065832B11B22810E009630E2 /* libc++.dylib in Frameworks */,
+				065832AF1B2280FB009630E2 /* libicucore.dylib in Frameworks */,
 				06CE23AD1B163BCD0079558D /* libsqlite3.dylib in Frameworks */,
 				06CE23AB1B163BB80079558D /* libz.dylib in Frameworks */,
 				06CE23A91B163BAA0079558D /* SystemConfiguration.framework in Frameworks */,
@@ -196,6 +202,8 @@
 		BD86F02250B1ACE58BB78EC5 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				065832B01B22810E009630E2 /* libc++.dylib */,
+				065832AE1B2280FB009630E2 /* libicucore.dylib */,
 				E1E3C4A266BA7857D18879F7 /* libPods.a */,
 			);
 			name = Frameworks;

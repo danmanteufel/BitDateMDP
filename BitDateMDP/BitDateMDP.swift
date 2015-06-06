@@ -22,7 +22,7 @@ struct SB {
     static let UserCell = "User Cell"
 }
 
-//MARK: - Page VC
+//MARK: - Page View Controller
 class PageVC: UIPageViewController, UIPageViewControllerDataSource {
     //MARK: Defines
     let cardsVC = SB.Main.instantiateViewControllerWithIdentifier(SB.CardsNC) as! UIViewController
@@ -68,7 +68,7 @@ class PageVC: UIPageViewController, UIPageViewControllerDataSource {
     }
 }
 
-//MARK: - Login VC
+//MARK: - Login View Controller
 class LoginVC: UIViewController {
     //MARK: Defines
     
@@ -116,7 +116,7 @@ class LoginVC: UIViewController {
     
 }
 
-//MARK: - Profile VC
+//MARK: - Profile View Controller
 class ProfileVC: UIViewController {
     //MARK: Defines
     
@@ -300,7 +300,6 @@ class MatchesTVC: UITableViewController {
     override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier(SB.UserCell) as! UserCell
         let user = matches[indexPath.row].user
-        println(user.name)
         cell.nameLabel.text = user.name
         user.getPhoto() {
             cell.avatarImageView.image = $0
@@ -315,12 +314,107 @@ class MatchesTVC: UITableViewController {
     
     //MARK: UITableView Delegate
     override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+        let chatVC = ChatVC()
+        let match = matches[indexPath.row]
+        chatVC.matchID = match.id
+        chatVC.title = match.user.name
+        navigationController?.pushViewController(chatVC, animated: true)
+        
         tableView.deselectRowAtIndexPath(indexPath, animated: true)
     }
 
     
 }
 
+//MARK: - Chat View Controller
+class ChatVC: JSQMessagesViewController {
+    //MARK: Defines
+    let outgoingBubble = JSQMessagesBubbleImageFactory().outgoingMessagesBubbleImageWithColor(.jsq_messageBubbleBlueColor())
+    let incomingBubble = JSQMessagesBubbleImageFactory().incomingMessagesBubbleImageWithColor(.jsq_messageBubbleLightGrayColor())
+    
+    //MARK: Properties
+    var messages: [JSQMessage] = []
+    var matchID: String?
+    var messageListener: MessageListener?
+    override var senderId: String! {
+        get {
+            return currentUser()?.id
+        }
+        set {
+            super.senderId = newValue
+        }
+    }
+    override var senderDisplayName: String! {
+        get {
+            return currentUser()?.name
+        }
+        set {
+            super.senderDisplayName = newValue
+        }
+    }
+    
+    //MARK: Flow Functions
+    override func viewWillAppear(animated: Bool) {
+        super.viewWillAppear(animated)
+        if let id = matchID {
+            messageListener = MessageListener(matchID: id, startDate: NSDate()) {
+                message in
+                self.messages.append(JSQMessage(senderId: message.senderID, senderDisplayName: message.senderID, date: message.date, text: message.message))
+                self.finishReceivingMessage()
+            }
+        }
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        //Removing avators because we don't have time to figure them out
+        collectionView.collectionViewLayout.incomingAvatarViewSize = CGSizeZero
+        collectionView.collectionViewLayout.outgoingAvatarViewSize = CGSizeZero
+        
+        if let id = matchID {
+            fetchMessages(id) {
+                messages in
+                for message in messages {
+                    self.messages.append(JSQMessage(senderId: message.senderID, senderDisplayName: message.senderID, date: message.date, text: message.message))
+                }
+                self.finishReceivingMessage()
+            }
+        }
+    }
+    
+    override func viewWillDisappear(animated: Bool) {
+        super.viewWillDisappear(animated)
+        messageListener?.stop()
+    }
+    
+    override func didPressSendButton(button: UIButton!, withMessageText text: String!, senderId: String!, senderDisplayName: String!, date: NSDate!) {
+        let message = JSQMessage(senderId: senderId, senderDisplayName: senderDisplayName, date: date, text: text)
+        messages.append(message)
+        if let id = matchID {
+            saveMessage(id, Message(message: text, senderID: senderId, date: date))
+        }
+        finishSendingMessage()
+    }
+    
+    //MARK: Helper Functions
+    
+    //MARK: JSQMessagesCollectionView Data Source
+    override func collectionView(collectionView: JSQMessagesCollectionView!, messageDataForItemAtIndexPath indexPath: NSIndexPath!) -> JSQMessageData! {
+        return messages[indexPath.row]
+    }
+    
+    override func collectionView(collectionView: JSQMessagesCollectionView!, messageBubbleImageDataForItemAtIndexPath indexPath: NSIndexPath!) -> JSQMessageBubbleImageDataSource! {
+        if messages[indexPath.row].senderId == PFUser.currentUser()?.objectId {
+            return outgoingBubble
+        } else { return incomingBubble }
+    }
+    
+    //MARK: UICollectionView Data Source
+    override func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return messages.count
+    }
+    
+}
 
 //MARK: - Views
 //MARK: - Card View
@@ -393,14 +487,14 @@ class CardView: UIView {
 //MARK: - Swipe View
 @IBDesignable
 class SwipeView: UIView {
-    //Defines
+    //MARK: Defines
     let kSVConstraintStandardMultiplier = CGFloat(1)
     let kSVConstraintStandardConstant = CGFloat(0)
     let kDecisionThreshold = CGFloat(4)
     
     let overlay = UIImageView()
     
-    //Properties
+    //MARK: Properties
     private var originalPoint: CGPoint?
     weak var delegate: SwipeViewDelegate? //prevents memory retain cycle - makes sense with delegation
     var innerView: UIView? {
@@ -413,7 +507,7 @@ class SwipeView: UIView {
     }
     var direction: Direction?
     
-    //Flow Functions
+    //MARK: Flow Functions
     required init(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         initialSetup()
@@ -424,7 +518,7 @@ class SwipeView: UIView {
         initialSetup()
     }
     
-    //Helper Functions
+    //MARK: Helper Functions
     private func initialSetup() {
         backgroundColor = .clearColor()
         
@@ -521,7 +615,8 @@ enum Direction {
 }
 
 //MARK: - Model
-struct K {
+//MARK: Constants
+private struct K {
     static let PictureKey = "picture"
     static let ParseAppID = "TXYTkJvwFTxGTCRAcXRq5MsXmuPjehT1sc42gz3J"
     static let ParseClientKey = "lXTnV3acc8gNoimtDGzy3EdGzAnyKhHQHbYJzu1o"
@@ -531,8 +626,20 @@ struct K {
     static let ObjectIDAttr = "objectId"
     static let TypeAttr = "type"
     static let MatchedValue = "matched"
+    static let MessageKey = "message"
+    static let SenderKey = "sender"
+    static let FirebaseSession = Firebase(url: "https://bitdatemdp.firebaseio.com/messages")
+    static let MessageQueryLimit = UInt(25)
+    
+    static func dateFormatter() -> NSDateFormatter {
+        let dateFormatter = NSDateFormatter()
+        dateFormatter.dateFormat = "yyyyMMddHHmmss"
+        return dateFormatter
+    }
+
 }
 
+//MARK: Model Data Structs
 struct User {
     //Public Interface
     let id: String
@@ -560,7 +667,42 @@ struct Match {
     //Private Interface - Backend
 }
 
-//Public Model Functions
+struct Message {
+    //Public Interface
+    let message: String
+    let senderID: String
+    let date: NSDate
+    
+    //Private Interface - Backend
+}
+
+//MARK: Model Classes
+class MessageListener {
+    //MARK: Defines
+    
+    //MARK: Properties
+    var currentHandle: UInt?
+    
+    //MARK: Functions
+    init(matchID: String, startDate: NSDate, callback: (Message) -> ()) {
+        let handle = K.FirebaseSession.childByAppendingPath(matchID).queryOrderedByKey().queryStartingAtValue(K.dateFormatter().stringFromDate(startDate))
+            .observeEventType(FEventType.ChildAdded, withBlock: {
+                snapshot in
+                let message = snapshotToMessage(snapshot)
+                callback(message)
+        })
+        self.currentHandle = handle
+    }
+    
+    func stop() {
+        if let handle = currentHandle {
+            K.FirebaseSession.removeObserverWithHandle(handle)
+            currentHandle = nil
+        }
+    }
+}
+
+//MARK: - Public Model Functions
 func currentUser() -> User? {
     if let user = PFUser.currentUser() {
         return pfUserToUser(user)
@@ -660,9 +802,34 @@ func fetchMatches(callback: ([Match]) -> ()) {
     }
 }
 
-//Private Model Functions
+func saveMessage(matchID: String, message: Message) {
+    K.FirebaseSession.childByAppendingPath(matchID).updateChildValues([K.dateFormatter().stringFromDate(message.date) : [K.MessageKey : message.message ,
+        K.SenderKey : message.senderID]])
+    
+}
+
+func fetchMessages(matchId: String, callback: ([Message]) -> ()) {
+    K.FirebaseSession.childByAppendingPath(matchId).queryLimitedToFirst(K.MessageQueryLimit).observeSingleEventOfType(FEventType.Value, withBlock: {
+        snapshot in
+        var messages = Array<Message>()
+        let enumerator = snapshot.children
+        while let data = enumerator.nextObject() as? FDataSnapshot {
+            messages.append(snapshotToMessage(data))
+        }
+        callback(messages)
+    })
+}
+
+//MARK: Private Model Functions
 private func pfUserToUser(user: PFUser) -> User {
     return User(id: user.objectId!, name: user.objectForKey("firstName") as! String, pfUser: user)
+}
+
+private func snapshotToMessage(snapshot: FDataSnapshot) -> Message {
+    let date = K.dateFormatter().dateFromString(snapshot.key)
+    let sender = snapshot.value[K.SenderKey] as? String
+    let text = snapshot.value[K.MessageKey] as? String
+    return Message(message: text!, senderID: sender!, date: date!)
 }
 
 //
